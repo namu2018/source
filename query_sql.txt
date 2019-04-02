@@ -1,0 +1,102 @@
+# 다운로드
+wget http://files.grouplens.org/datasets/movielens/ml-100k.zip
+
+# 
+unzip ml-100k.zip
+cd ml-100k
+
+# 데이터 올리기
+hdfs dfs -ls /
+hdfs dfs -mkdir /user/movieinfo
+hdfs dfs -mkdir /user/userinfo
+
+# 확인
+hdfs dfs -ls /user
+
+# 데이터 올리기
+hdfs dfs  -put  u.item  /user/movieinfo/  # 영화정보 올리기
+hdfs dfs  -put  u.user   /user/userinfo/    # 유저정보 올리기
+hdfs dfs -ls -R /user/movieinfo
+hdfs dfs -ls -R /user/userinfo
+
+## 
+## DB가 있다면 삭제하고 재생성
+hive
+drop  database if EXISTS hivedemo CASCADE;
+create database  hivedemo;
+use hivedemo;
+
+## DB table 만들기
+CREATE TABLE movieinfo (
+movie_id INT,
+movie_title STRING,
+release_date STRING,
+video_release_date STRING,
+imdb_url STRING,
+unknown INT,
+action INT,
+adventure INT,
+animation INT,
+children INT,
+comedy INT,
+crime INT,
+documentary INT,
+drama INT,
+fantasy INT,
+film_noir INT,
+horror INT,
+musical INT,
+mystery INT,
+romance INT,
+sci_fi INT,
+thriller INT,
+war INT,
+Western INT
+)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY '|'
+STORED AS TEXTFILE;
+
+show tables;
+
+# HDFS 파일을 HIVE DB로 옮긴다.
+!hdfs dfs -ls -R  /user/movieinfo;
+LOAD DATA INPATH '/user/movieinfo/u.item' INTO TABLE movieinfo;
+
+# 
+
+CREATE EXTERNAL TABLE users (
+user_id INT,
+age INT,
+gender STRING,
+occupation STRING,
+zip_code STRING
+)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY '|'
+STORED AS TEXTFILE;
+
+## 데이터 올리기 (HDFS -> hiveDB)
+LOAD DATA INPATH '/user/userinfo/u.user' INTO TABLE users;
+
+# 유저의 수를 확인해 보자. (943명)
+select count(*) from users; 
+
+# 아티스티라는 직업을 가진 사람은 몇명인가?(28명) 
+select count(*) from users where occupation = 'artist';
+
+# 직업별 인원 파악
+select count(*),  occupation  from users group by occupation;
+
+# 직업별 인원 파악(남녀)
+select count(*),  occupation, gender  from users group by occupation, gender;
+
+# 직업별 남녀 평균 연령
+select sum(age),  count(*), occupation, gender  from users group by occupation, gender;
+
+# sub Query를 이용한 새로운 table 만들기
+CREATE TABLE occupation_count
+STORED AS RCFile AS
+SELECT COUNT(*), occupation FROM users GROUP BY occupation;
+
+select * from occupation_count ;
